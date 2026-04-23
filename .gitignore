@@ -1,0 +1,30 @@
+# --- Secretos (NUNCA commitear) ---
+.env
+.env.prod
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+*.war
+*.log
+hs_err_pid*
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+docker-compose.override.yml

@@ -1,0 +1,58 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRATION_MS: ${{ secrets.JWT_EXPIRATION_MS }}
+          GATEWAY_HOST_PORT: ${{ secrets.GATEWAY_HOST_PORT }}
+          REPO_PATH: ${{ secrets.REPO_PATH }}
+          REPO_BRANCH: ${{ secrets.REPO_BRANCH }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          envs: DB_HOST,DB_PORT,DB_USER,DB_PASSWORD,JWT_SECRET,JWT_EXPIRATION_MS,GATEWAY_HOST_PORT,REPO_PATH,REPO_BRANCH
+          script: |
+            set -e
+            cd "${REPO_PATH:-$HOME/backend}"
+
+            echo ">> Pulling latest code"
+            git fetch --all --prune
+            git reset --hard "origin/${REPO_BRANCH:-main}"
+
+            echo ">> Writing .env from secrets"
+            umask 077
+            cat > .env <<EOF
+            DB_HOST=${DB_HOST}
+            DB_PORT=${DB_PORT:-3306}
+            DB_USER=${DB_USER}
+            DB_PASSWORD=${DB_PASSWORD}
+            JWT_SECRET=${JWT_SECRET}
+            JWT_EXPIRATION_MS=${JWT_EXPIRATION_MS:-3600000}
+            GATEWAY_HOST_PORT=${GATEWAY_HOST_PORT:-80}
+            EOF
+
+            echo ">> Building and (re)starting containers"
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            echo ">> Cleaning up old images"
+            docker image prune -f
+
+            echo ">> Current status"
+            docker compose -f docker-compose.prod.yml ps
