@@ -30,11 +30,17 @@ jobs:
           envs: DB_HOST,DB_PORT,DB_USER,DB_PASSWORD,JWT_SECRET,JWT_EXPIRATION_MS,GATEWAY_HOST_PORT,REPO_PATH,REPO_BRANCH
           script: |
             set -e
-            cd "${REPO_PATH:-$HOME/backend}"
+
+            # Strip CR/LF from secrets (GitHub textarea sometimes adds trailing newline)
+            REPO_PATH="$(printf '%s' "${REPO_PATH:-$HOME/backend}" | tr -d '\r\n')"
+            REPO_BRANCH="$(printf '%s' "${REPO_BRANCH:-main}" | tr -d '\r\n')"
+
+            echo ">> Deploying to: $REPO_PATH (branch: $REPO_BRANCH)"
+            cd "$REPO_PATH"
 
             echo ">> Pulling latest code"
             git fetch --all --prune
-            git reset --hard "origin/${REPO_BRANCH:-main}"
+            git reset --hard "origin/$REPO_BRANCH"
 
             echo ">> Writing .env from secrets"
             umask 077
@@ -52,8 +58,8 @@ jobs:
             docker compose up -d --build
 
             echo ">> Cleaning up old images and build cache"
-            docker image prune -f
-            docker buildx prune -af
+            docker image prune -f || true
+            docker builder prune --all --force || true
 
             echo ">> Current status"
             docker compose ps
