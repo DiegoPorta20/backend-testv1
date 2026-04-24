@@ -30,6 +30,11 @@ public class ProductController {
         return ResponseEntity.ok(productService.findAll(search, pageable));
     }
 
+    @GetMapping("/status")
+    public ResponseEntity<String> status() {
+        return ResponseEntity.ok("Este cambio fue realizado con éxito");
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.findById(id));
